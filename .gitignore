@@ -40,3 +40,6 @@ _deps/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Other files
+forge2d_roadmap.md
