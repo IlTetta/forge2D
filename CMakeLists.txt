@@ -40,6 +40,14 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 FetchContent_MakeAvailable(glad)
 unset(CMAKE_POLICY_VERSION_MINIMUM)
 
+# --- stb ---
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG        master
+)
+FetchContent_MakeAvailable(stb)
+
 # --- OpenGL ---
 find_package(OpenGL REQUIRED)
 
@@ -51,6 +59,11 @@ add_executable(forge2d ${FORGE_SOURCES})
 target_include_directories(forge2d PRIVATE
     src
     ${glad_SOURCE_DIR}/include
+    ${stb_SOURCE_DIR}
+)
+
+target_compile_definitions(forge2d PRIVATE
+    FORGE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
 )
 
 target_link_libraries(forge2d PRIVATE
