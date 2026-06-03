@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "Log.h"
+#include "../input/Input.h"
 #include <glad/glad.h>    // must precede glfw3.h
 #include <GLFW/glfw3.h>
 
@@ -12,6 +13,7 @@ Application::Application(const WindowConfig& config)
 {
     FG_INFO("Window created  %dx%d  \"%s\"",
             config.width, config.height, config.title.c_str());
+    Input::init(m_window.handle());
 }
 
 void Application::run() {
@@ -31,6 +33,7 @@ void Application::run() {
             onUpdate(static_cast<float>(FIXED_DT));
             lag -= FIXED_DT;
         }
+        Input::update(); // tick key states, reset scroll delta
 
         glClearColor(0.08f, 0.08f, 0.10f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);

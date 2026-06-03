@@ -1,20 +1,16 @@
 #include "core/Application.h"
 #include "core/Log.h"
+#include "core/Camera2D.h"
+#include "input/Input.h"
 #include "renderer/Renderer2D.h"
-#include "renderer/Texture.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 class ForgeApp final : public forge::Application {
 public:
     ForgeApp()
         : forge::Application({"forge2d", 1280, 720, false})
+        , m_camera(1280.f, 720.f)
     {
         forge::Renderer2D::init();
-        m_proj = glm::ortho(0.0f, 1280.0f, 0.0f, 720.0f, -1.0f, 1.0f);
-
-        // Uncomment to load textures from file:
-        // m_tex1 = std::make_unique<forge::Texture>(FORGE_ASSETS_DIR "/textures/sprite1.png");
-        // m_tex2 = std::make_unique<forge::Texture>(FORGE_ASSETS_DIR "/textures/sprite2.png");
     }
 
     ~ForgeApp() {
@@ -22,48 +18,66 @@ public:
     }
 
 protected:
-    void onUpdate(float /*dt*/) override {}
+    void onUpdate(float dt) override {
+        // Pan speed scales down when zoomed in so movement feels consistent
+        const float panSpeed = 400.f / m_camera.getZoom();
 
-    void onRender() override {
-        forge::Renderer2D::resetStats();
-        forge::Renderer2D::beginScene(m_proj);
+        if (forge::Input::isKeyDown(forge::Key::A) || forge::Input::isKeyDown(forge::Key::Left))
+            m_camera.move({-panSpeed * dt, 0.f});
+        if (forge::Input::isKeyDown(forge::Key::D) || forge::Input::isKeyDown(forge::Key::Right))
+            m_camera.move({ panSpeed * dt, 0.f});
+        if (forge::Input::isKeyDown(forge::Key::S) || forge::Input::isKeyDown(forge::Key::Down))
+            m_camera.move({0.f, -panSpeed * dt});
+        if (forge::Input::isKeyDown(forge::Key::W) || forge::Input::isKeyDown(forge::Key::Up))
+            m_camera.move({0.f,  panSpeed * dt});
 
-        // --- solid-color quads (all batched into one draw call) ---
-        forge::Renderer2D::drawQuad({  50.f, 500.f}, {100.f, 100.f}, {0.8f, 0.2f, 0.3f, 1.0f});
-        forge::Renderer2D::drawQuad({ 160.f, 500.f}, {100.f, 100.f}, {0.2f, 0.8f, 0.3f, 1.0f});
-        forge::Renderer2D::drawQuad({ 270.f, 500.f}, {100.f, 100.f}, {0.2f, 0.3f, 0.8f, 1.0f});
-        forge::Renderer2D::drawQuad({ 380.f, 500.f}, {100.f, 100.f}, {0.9f, 0.7f, 0.1f, 1.0f});
+        // Scroll wheel zooms — each notch is +/-10%
+        float scroll = forge::Input::getScrollDelta();
+        if (scroll != 0.f)
+            m_camera.adjustZoom(1.f + scroll * 0.1f);
 
-        // --- semi-transparent quads (alpha blending) ---
-        forge::Renderer2D::drawQuad({ 100.f, 300.f}, {200.f, 150.f}, {0.8f, 0.2f, 0.3f, 1.0f});
-        forge::Renderer2D::drawQuad({ 180.f, 340.f}, {200.f, 150.f}, {0.2f, 0.4f, 0.9f, 0.6f});
-        forge::Renderer2D::drawQuad({ 260.f, 380.f}, {200.f, 150.f}, {0.1f, 0.9f, 0.4f, 0.4f});
-
-        // --- textured quads (uncomment when textures are loaded) ---
-        // forge::Renderer2D::drawQuad({700.f, 200.f}, {200.f, 200.f}, *m_tex1);
-        // forge::Renderer2D::drawQuad({920.f, 200.f}, {200.f, 200.f}, *m_tex2, {1.f, 0.8f, 0.8f, 1.f});
-
-        forge::Renderer2D::endScene();
-
-        // Log stats once per second to see how many draw calls were used
-        m_statsTimer += 1.0f / 60.0f; // approximate; replace with real dt if desired
-        if (m_statsTimer >= 1.0f) {
-            m_statsTimer = 0.0f;
-            auto s = forge::Renderer2D::getStats();
-            FG_TRACE("Batch stats | drawCalls: %u  quads: %u", s.drawCalls, s.quadCount);
+        // R resets camera
+        if (forge::Input::isKeyPressed(forge::Key::R)) {
+            m_camera.setPosition({0.f, 0.f});
+            m_camera.setZoom(1.f);
+            FG_INFO("Camera reset");
         }
     }
 
-private:
-    glm::mat4 m_proj{1.0f};
-    float     m_statsTimer = 0.0f;
+    void onRender() override {
+        forge::Renderer2D::resetStats();
+        forge::Renderer2D::beginScene(m_camera.getViewProjection());
 
-    // std::unique_ptr<forge::Texture> m_tex1;
-    // std::unique_ptr<forge::Texture> m_tex2;
+        // 7x5 grid of quads, spaced 280x200 world units apart, centred at origin
+        static constexpr glm::vec4 kColors[] = {
+            {0.80f, 0.20f, 0.20f, 1.f},
+            {0.20f, 0.75f, 0.25f, 1.f},
+            {0.20f, 0.35f, 0.85f, 1.f},
+            {0.85f, 0.75f, 0.10f, 1.f},
+            {0.75f, 0.20f, 0.75f, 1.f},
+            {0.15f, 0.75f, 0.80f, 1.f},
+        };
+        int ci = 0;
+        for (int row = -2; row <= 2; ++row) {
+            for (int col = -3; col <= 3; ++col) {
+                glm::vec2 pos = {col * 280.f - 55.f, row * 200.f - 55.f};
+                forge::Renderer2D::drawQuad(pos, {110.f, 110.f}, kColors[ci++ % 6]);
+            }
+        }
+
+        // Semi-transparent white square at the world origin as a landmark
+        forge::Renderer2D::drawQuad({-75.f, -75.f}, {150.f, 150.f}, {1.f, 1.f, 1.f, 0.12f});
+
+        forge::Renderer2D::endScene();
+    }
+
+private:
+    forge::Camera2D m_camera;
 };
 
 int main() {
-    forge::Log::init(forge::LogLevel::Trace);
+    forge::Log::init(forge::LogLevel::Info);
+    FG_INFO("Controls: WASD / arrow keys = pan | scroll = zoom | R = reset");
 
     try {
         ForgeApp app;
