@@ -9,8 +9,8 @@ University / portfolio project — developed incrementally over 8 weeks.
 - [x] Configurable window via GLFW
 - [x] OpenGL 3.3 Core context via GLAD
 - [x] Colored, leveled logger with timestamp and file/line info
-- [ ] Shader & Texture abstraction
-- [ ] Batch renderer
+- [x] Shader & Texture abstraction
+- [x] Batch renderer
 - [ ] Orthographic 2D camera
 - [ ] Input system (keyboard + mouse)
 - [ ] Entity-Component system
