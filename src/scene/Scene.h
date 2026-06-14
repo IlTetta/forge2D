@@ -1,5 +1,6 @@
 #pragma once
 #include "Entity.h"
+#include "../physics/PhysicsWorld.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -35,7 +36,8 @@ protected:
     std::vector<std::unique_ptr<Entity>> m_entities;
 
 private:
-    std::string m_name;
+    std::string  m_name;
+    PhysicsWorld m_physicsWorld;
 };
 
 } // namespace forge

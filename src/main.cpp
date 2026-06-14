@@ -2,6 +2,8 @@
 #include "core/Camera2D.h"
 #include "core/Log.h"
 #include "input/Input.h"
+#include "physics/BoxCollider.h"
+#include "physics/Rigidbody2D.h"
 #include "renderer/Renderer2D.h"
 #include "renderer/TileMap.h"
 #include "renderer/Texture.h"
@@ -16,15 +18,13 @@
 // Helpers — build programmatic textures without external assets
 // ---------------------------------------------------------------------------
 static std::unique_ptr<forge::Texture> makeSpritesheet() {
-    // 4 frames × 32×32 px = 128×32 px strip (single row, 4 columns)
-    // Colors are stored bottom-to-top in the buffer (matches OpenGL convention)
     constexpr int W = 128, H = 32, COLS = 4, FW = 32;
     std::vector<uint32_t> px(W * H);
     const uint32_t colors[COLS] = {
-        0xFF4444CCu,  // frame 0 — red-ish   (ABGR)
-        0xFF44CC44u,  // frame 1 — green
-        0xFFCC4444u,  // frame 2 — blue
-        0xFF44CCCCu,  // frame 3 — yellow
+        0xFF4444CCu,
+        0xFF44CC44u,
+        0xFFCC4444u,
+        0xFF44CCCCu,
     };
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x)
@@ -33,14 +33,13 @@ static std::unique_ptr<forge::Texture> makeSpritesheet() {
 }
 
 static std::unique_ptr<forge::Texture> makeTileset() {
-    // 4 tiles in a single row × 48×48 px = 192×48 px
     constexpr int W = 192, H = 48, COLS = 4, TW = 48;
     std::vector<uint32_t> px(W * H);
     const uint32_t colors[COLS] = {
-        0xFF336699u,  // tile 1 — dark ground  (ABGR)
-        0xFF33AA33u,  // tile 2 — grass
-        0xFF886633u,  // tile 3 — water (blue-ish in ABGR = brownish here, relabelled "dirt")
-        0xFF888888u,  // tile 4 — stone
+        0xFF336699u,
+        0xFF33AA33u,
+        0xFF886633u,
+        0xFF888888u,
     };
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x)
@@ -49,7 +48,7 @@ static std::unique_ptr<forge::Texture> makeTileset() {
 }
 
 // ---------------------------------------------------------------------------
-// Demo scene
+// Demo scene — includes week 7 physics demo
 // ---------------------------------------------------------------------------
 class DemoScene : public forge::Scene {
 public:
@@ -69,21 +68,11 @@ public:
         ac.addClip("cycle", forge::AnimationClip{{0, 1, 2, 3}, 4.f, true});
         ac.play("cycle");
 
-        // --- Static reference entities ---
-        auto& s1 = createEntity("Static A");
-        s1.getComponent<forge::Transform>()->position = {-160.f, 80.f};
-        s1.addComponent<forge::SpriteRenderer>().color = {0.8f, 0.8f, 0.8f, 1.f};
-
-        auto& s2 = createEntity("Static B");
-        s2.getComponent<forge::Transform>()->position = {160.f, 80.f};
-        s2.addComponent<forge::SpriteRenderer>().color = {0.5f, 0.5f, 0.9f, 0.7f};
-
-        // --- TileMap: 12×8 grid of 48×48-px tiles, centred at origin ---
+        // --- TileMap ---
         m_tileset = makeTileset();
         m_tileMap.setTileset(m_tileset.get(), 48, 48, 4);
         m_tileMap.resize(12, 8);
 
-        // Simple map layout (row 0 = top, gid 1-4 = tile types)
         static constexpr int kMap[8][12] = {
             { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
             { 4, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 4 },
@@ -97,22 +86,107 @@ public:
         for (int r = 0; r < 8; ++r)
             for (int c = 0; c < 12; ++c)
                 m_tileMap.setTile(c, r, kMap[r][c]);
+
+        // ---------------------------------------------------------------
+        // Week 7 — Physics demo
+        // Positioned in the right half of the screen (x > 300)
+        // ---------------------------------------------------------------
+
+        // Ground platform (static — no Rigidbody2D)
+        auto& ground = createEntity("Ground");
+        ground.getComponent<forge::Transform>()->position = {450.f, -250.f};
+        auto& gsr = ground.addComponent<forge::SpriteRenderer>();
+        gsr.size  = {400.f, 24.f};
+        gsr.color = {0.55f, 0.37f, 0.20f, 1.f};
+        auto& gcol   = ground.addComponent<forge::BoxCollider>();
+        gcol.size    = {400.f, 24.f};
+
+        // Mid-air platform (static)
+        auto& shelf = createEntity("Shelf");
+        shelf.getComponent<forge::Transform>()->position = {500.f, -80.f};
+        auto& shsr = shelf.addComponent<forge::SpriteRenderer>();
+        shsr.size  = {160.f, 16.f};
+        shsr.color = {0.35f, 0.55f, 0.35f, 1.f};
+        auto& shcol = shelf.addComponent<forge::BoxCollider>();
+        shcol.size  = {160.f, 16.f};
+
+        // Left wall (static)
+        auto& wallL = createEntity("WallL");
+        wallL.getComponent<forge::Transform>()->position = {255.f, -130.f};
+        auto& wlsr = wallL.addComponent<forge::SpriteRenderer>();
+        wlsr.size  = {14.f, 260.f};
+        wlsr.color = {0.4f, 0.4f, 0.5f, 1.f};
+        auto& wlcol = wallL.addComponent<forge::BoxCollider>();
+        wlcol.size  = {14.f, 260.f};
+
+        // Right wall (static)
+        auto& wallR = createEntity("WallR");
+        wallR.getComponent<forge::Transform>()->position = {645.f, -130.f};
+        auto& wrsr = wallR.addComponent<forge::SpriteRenderer>();
+        wrsr.size  = {14.f, 260.f};
+        wrsr.color = {0.4f, 0.4f, 0.5f, 1.f};
+        auto& wrcol = wallR.addComponent<forge::BoxCollider>();
+        wrcol.size  = {14.f, 260.f};
+
+        // Dynamic box (Rigidbody2D + BoxCollider)
+        m_box = &createEntity("Box");
+        spawnBox();
+
+        // Trigger zone — logs a message when the box enters it
+        auto& trigger = createEntity("Trigger");
+        trigger.getComponent<forge::Transform>()->position = {450.f, -155.f};
+        auto& trsr = trigger.addComponent<forge::SpriteRenderer>();
+        trsr.size  = {120.f, 80.f};
+        trsr.color = {1.f, 1.f, 0.f, 0.15f};
+        auto& trcol     = trigger.addComponent<forge::BoxCollider>();
+        trcol.size      = {120.f, 80.f};
+        trcol.isTrigger = true;
+        trcol.onCollision = [](const forge::CollisionInfo& info) {
+            FG_INFO("Trigger hit by: %s", info.other->name.c_str());
+        };
     }
 
     void onUpdate(float dt) override {
         Scene::onUpdate(dt);
+
+        // Space resets the falling box
+        if (forge::Input::isKeyPressed(forge::Key::Space))
+            spawnBox();
     }
 
     void onRender() override {
-        // Map is 12×8 tiles × 48px = 576×384 world units; centre at origin
         m_tileMap.render({-288.f, -192.f});
         Scene::onRender();
     }
 
 private:
+    void spawnBox() {
+        if (!m_box) return;
+        auto* t  = m_box->getComponent<forge::Transform>();
+        auto* rb = m_box->getComponent<forge::Rigidbody2D>();
+        auto* bc = m_box->getComponent<forge::BoxCollider>();
+        auto* sr = m_box->getComponent<forge::SpriteRenderer>();
+
+        if (!rb) {
+            // First-time setup
+            if (t) t->position = {450.f, 200.f};
+            auto& newSr = m_box->addComponent<forge::SpriteRenderer>();
+            newSr.size  = {40.f, 40.f};
+            newSr.color = {0.9f, 0.2f, 0.2f, 1.f};
+            auto& newBc = m_box->addComponent<forge::BoxCollider>();
+            newBc.size  = {40.f, 40.f};
+            m_box->addComponent<forge::Rigidbody2D>();
+        } else {
+            if (t)  t->position = {450.f, 200.f};
+            if (rb) rb->velocity = {0.f, 0.f};
+            (void)bc; (void)sr;
+        }
+    }
+
     std::unique_ptr<forge::Texture> m_spritesheet;
     std::unique_ptr<forge::Texture> m_tileset;
     forge::TileMap                  m_tileMap;
+    forge::Entity*                  m_box = nullptr;
 };
 
 // ---------------------------------------------------------------------------
@@ -167,7 +241,7 @@ private:
 // ---------------------------------------------------------------------------
 int main() {
     forge::Log::init(forge::LogLevel::Info);
-    FG_INFO("Controls: WASD/arrows = pan | scroll = zoom | R = reset");
+    FG_INFO("Controls: WASD/arrows = pan | scroll = zoom | R = reset camera | Space = respawn box");
 
     try {
         ForgeApp app;

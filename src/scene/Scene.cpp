@@ -25,7 +25,9 @@ Entity* Scene::findEntity(const std::string& name) {
 }
 
 void Scene::onUpdate(float dt) {
-    for (auto& e : m_entities) e->onUpdate(dt);
+    for (auto& e : m_entities)
+        if (e->active) e->onUpdate(dt);
+    m_physicsWorld.step(dt, m_entities);
 }
 
 void Scene::onRender() {
