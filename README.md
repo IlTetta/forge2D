@@ -1,7 +1,6 @@
 # forge2D
 
 A lightweight 2D game engine written in **C++17**, built on top of **OpenGL 3.3 Core**.  
-University / portfolio project — developed incrementally over 8 weeks.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![C++](https://img.shields.io/badge/C%2B%2B-17-informational.svg)
