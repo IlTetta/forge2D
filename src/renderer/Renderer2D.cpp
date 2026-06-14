@@ -163,51 +163,85 @@ void Renderer2D::endScene() {
 
 // --------------------------------------------------------------------------
 
+// pos = bottom-left corner, rotRad = rotation in radians around the quad centre
+// uv  = {u0, v0, u1, v1} sub-texture rect in [0,1]
 static void pushQuad(const glm::vec2& pos, const glm::vec2& size,
-                     const glm::vec4& color, float texIdx)
+                     float rotRad, const glm::vec4& color, float texIdx,
+                     const glm::vec4& uv = {0.f, 0.f, 1.f, 1.f})
 {
+    const glm::vec2 half   = size * 0.5f;
+    const glm::vec2 centre = pos + half;
+    const float     c      = glm::cos(rotRad);
+    const float     s      = glm::sin(rotRad);
+
+    auto rotate = [&](glm::vec2 p) -> glm::vec2 {
+        return { p.x * c - p.y * s + centre.x,
+                 p.x * s + p.y * c + centre.y };
+    };
+
     QuadVertex* v = s_data.vertexBufferPtr;
-    v[0] = {{ pos.x,          pos.y          }, {0.f, 0.f}, color, texIdx};
-    v[1] = {{ pos.x + size.x, pos.y          }, {1.f, 0.f}, color, texIdx};
-    v[2] = {{ pos.x + size.x, pos.y + size.y }, {1.f, 1.f}, color, texIdx};
-    v[3] = {{ pos.x,          pos.y + size.y }, {0.f, 1.f}, color, texIdx};
+    v[0] = {rotate({-half.x, -half.y}), {uv.x, uv.y}, color, texIdx};
+    v[1] = {rotate({ half.x, -half.y}), {uv.z, uv.y}, color, texIdx};
+    v[2] = {rotate({ half.x,  half.y}), {uv.z, uv.w}, color, texIdx};
+    v[3] = {rotate({-half.x,  half.y}), {uv.x, uv.w}, color, texIdx};
     s_data.vertexBufferPtr += 4;
     ++s_data.quadCount;
 }
 
+// Helper: resolve texture slot (shared by both textured drawQuad overloads)
+static float resolveTexSlot(const Texture& tex) {
+    for (uint32_t i = 1; i < s_data.texSlotIndex; ++i)
+        if (s_data.texSlots[i] == &tex) return (float)i;
+
+    if (s_data.texSlotIndex >= MAX_TEXTURE_SLOTS)
+        Renderer2D::flush();
+
+    float idx = (float)s_data.texSlotIndex;
+    s_data.texSlots[s_data.texSlotIndex++] = &tex;
+    return idx;
+}
+
+// ---- public drawQuad overloads -------------------------------------------
+
 void Renderer2D::drawQuad(const glm::vec2& pos, const glm::vec2& size,
                           const glm::vec4& color)
 {
-    if (s_data.quadCount >= MAX_QUADS)
-        flush();
-
-    pushQuad(pos, size, color, 0.0f); // slot 0 = white texture
+    drawQuad(pos, size, 0.f, color);
 }
 
 void Renderer2D::drawQuad(const glm::vec2& pos, const glm::vec2& size,
                           const Texture& tex, const glm::vec4& tint)
 {
-    if (s_data.quadCount >= MAX_QUADS)
-        flush();
+    drawQuad(pos, size, 0.f, tex, tint);
+}
 
-    // Find texture in current slots
-    int texIdx = -1;
-    for (uint32_t i = 1; i < s_data.texSlotIndex; ++i) {
-        if (s_data.texSlots[i] == &tex) {
-            texIdx = (int)i;
-            break;
-        }
-    }
+void Renderer2D::drawQuad(const glm::vec2& pos, const glm::vec2& size,
+                          float rotDeg, const glm::vec4& color)
+{
+    if (s_data.quadCount >= MAX_QUADS) flush();
+    pushQuad(pos, size, glm::radians(rotDeg), color, 0.f);
+}
 
-    // New texture — assign to next free slot (flush if slots are full)
-    if (texIdx == -1) {
-        if (s_data.texSlotIndex >= MAX_TEXTURE_SLOTS)
-            flush();
-        texIdx = (int)s_data.texSlotIndex;
-        s_data.texSlots[s_data.texSlotIndex++] = &tex;
-    }
+void Renderer2D::drawQuad(const glm::vec2& pos, const glm::vec2& size,
+                          float rotDeg, const Texture& tex, const glm::vec4& tint)
+{
+    if (s_data.quadCount >= MAX_QUADS) flush();
+    pushQuad(pos, size, glm::radians(rotDeg), tint, resolveTexSlot(tex));
+}
 
-    pushQuad(pos, size, tint, (float)texIdx);
+void Renderer2D::drawSubTexture(const glm::vec2& pos, const glm::vec2& size,
+                                const Texture& tex, const glm::vec4& uvRect,
+                                const glm::vec4& tint)
+{
+    drawSubTexture(pos, size, 0.f, tex, uvRect, tint);
+}
+
+void Renderer2D::drawSubTexture(const glm::vec2& pos, const glm::vec2& size,
+                                float rotDeg, const Texture& tex,
+                                const glm::vec4& uvRect, const glm::vec4& tint)
+{
+    if (s_data.quadCount >= MAX_QUADS) flush();
+    pushQuad(pos, size, glm::radians(rotDeg), tint, resolveTexSlot(tex), uvRect);
 }
 
 // --------------------------------------------------------------------------

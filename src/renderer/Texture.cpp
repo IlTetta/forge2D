@@ -42,6 +42,10 @@ Texture::Texture(int width, int height, uint32_t colorRGBA) {
     upload(reinterpret_cast<unsigned char*>(pixels.data()), width, height, 4);
 }
 
+Texture::Texture(int width, int height, const uint32_t* pixels) {
+    upload(reinterpret_cast<const unsigned char*>(pixels), width, height, 4);
+}
+
 Texture::~Texture() {
     glDeleteTextures(1, &m_id);
 }

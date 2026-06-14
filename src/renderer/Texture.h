@@ -8,6 +8,7 @@ class Texture {
 public:
     explicit Texture(const std::string& path);
     Texture(int width, int height, uint32_t colorRGBA);
+    Texture(int width, int height, const uint32_t* pixels); // raw RGBA pixel data
     ~Texture();
 
     Texture(const Texture&)            = delete;

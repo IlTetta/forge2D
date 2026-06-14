@@ -48,6 +48,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stb)
 
+# --- nlohmann/json ---
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+)
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(nlohmann_json)
+
 # --- OpenGL ---
 find_package(OpenGL REQUIRED)
 
@@ -64,6 +73,7 @@ target_include_directories(forge2d PRIVATE
 
 target_compile_definitions(forge2d PRIVATE
     FORGE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+    FORGE_HAS_JSON
 )
 
 target_link_libraries(forge2d PRIVATE
@@ -71,4 +81,5 @@ target_link_libraries(forge2d PRIVATE
     glad
     glm::glm
     OpenGL::GL
+    nlohmann_json::nlohmann_json
 )
