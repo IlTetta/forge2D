@@ -43,3 +43,6 @@ desktop.ini
 
 # Other files
 forge2d_roadmap.md
+
+# Doxygen generated output
+docs/

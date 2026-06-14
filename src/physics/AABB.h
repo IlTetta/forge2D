@@ -4,18 +4,33 @@
 
 namespace forge {
 
+/**
+ * @brief Axis-Aligned Bounding Box used for collision detection.
+ *
+ * Defined by its minimum and maximum corners in world space. Used internally
+ * by BoxCollider and PhysicsWorld; you rarely need to construct one directly.
+ */
 struct AABB {
-    glm::vec2 min{0.f, 0.f};
-    glm::vec2 max{0.f, 0.f};
+    glm::vec2 min{0.f, 0.f}; ///< Bottom-left corner in world space.
+    glm::vec2 max{0.f, 0.f}; ///< Top-right corner in world space.
 
+    /** @brief Returns the centre point of the box. */
     glm::vec2 centre() const { return (min + max) * 0.5f; }
 
+    /**
+     * @brief Returns true if this box overlaps with @p o (touching edges do not count).
+     */
     bool overlaps(const AABB& o) const {
         return min.x < o.max.x && max.x > o.min.x
             && min.y < o.max.y && max.y > o.min.y;
     }
 
-    // Returns the MTV to move *this* out of `o` (zero if not overlapping).
+    /**
+     * @brief Returns the Minimum Translation Vector to push *this* out of @p o.
+     *
+     * The returned vector points along the axis of least penetration.
+     * Returns {0, 0} when the boxes do not overlap.
+     */
     glm::vec2 getPenetration(const AABB& o) const {
         if (!overlaps(o)) return {0.f, 0.f};
 

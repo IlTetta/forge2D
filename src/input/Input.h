@@ -5,7 +5,9 @@ struct GLFWwindow;
 
 namespace forge {
 
-// Key constants — values match GLFW_KEY_*
+/**
+ * @brief Keyboard key codes. Values match the corresponding GLFW_KEY_* constants.
+ */
 namespace Key {
     constexpr int Space        = 32;
     constexpr int Num0=48, Num1=49, Num2=50, Num3=51, Num4=52;
@@ -34,32 +36,81 @@ namespace Key {
     constexpr int RightAlt     = 346;
 }
 
-// Mouse button constants — values match GLFW_MOUSE_BUTTON_*
+/**
+ * @brief Mouse button codes. Values match the corresponding GLFW_MOUSE_BUTTON_* constants.
+ */
 namespace Mouse {
     constexpr int Left   = 0;
     constexpr int Right  = 1;
     constexpr int Middle = 2;
 }
 
+/**
+ * @brief Polling-based input system for keyboard, mouse, and scroll wheel.
+ *
+ * Input::init() must be called once with the GLFW window handle before any
+ * queries. Input::update() must be called once per frame (typically at the
+ * start of Application::onUpdate()) to advance the per-frame state machine.
+ *
+ * There are three keyboard query modes:
+ * - isKeyDown()     — true every frame the key is held.
+ * - isKeyPressed()  — true only on the **first** frame of a press.
+ * - isKeyReleased() — true only on the **first** frame of a release.
+ *
+ * @code
+ * // Movement (held):
+ * if (forge::Input::isKeyDown(forge::Key::D)) player.moveRight(dt);
+ *
+ * // One-shot action (pressed):
+ * if (forge::Input::isKeyPressed(forge::Key::Space)) player.jump();
+ * @endcode
+ */
 class Input {
 public:
-    static void init  (GLFWwindow* window);
-    static void update();  // call once per frame, after onUpdate() and before swapBuffers()
+    /** @brief Registers GLFW callbacks. Must be called once before any query. */
+    static void init(GLFWwindow* window);
 
-    // Keyboard
-    static bool isKeyDown    (int key);  // held down (includes the first frame)
-    static bool isKeyPressed (int key);  // true only on the first frame of a press
-    static bool isKeyReleased(int key);  // true only on the first frame of a release
+    /**
+     * @brief Advances the per-frame state machine.
+     *
+     * Call once per frame, after Window::pollEvents() and before reading input.
+     */
+    static void update();
 
-    // Mouse buttons
+    // ---- Keyboard -----------------------------------------------------------
+
+    /** @brief Returns true every frame the key is held down. */
+    static bool isKeyDown    (int key);
+
+    /** @brief Returns true only on the first frame the key is pressed. */
+    static bool isKeyPressed (int key);
+
+    /** @brief Returns true only on the first frame the key is released. */
+    static bool isKeyReleased(int key);
+
+    // ---- Mouse buttons ------------------------------------------------------
+
+    /** @brief Returns true every frame the mouse button is held down. */
     static bool isMouseDown    (int button);
+
+    /** @brief Returns true only on the first frame the mouse button is pressed. */
     static bool isMousePressed (int button);
+
+    /** @brief Returns true only on the first frame the mouse button is released. */
     static bool isMouseReleased(int button);
 
-    // Mouse position (screen pixels, origin top-left)
+    // ---- Mouse position -----------------------------------------------------
+
+    /** @brief Returns the cursor position in screen pixels (origin = top-left). */
     static glm::vec2 getMousePos();
 
-    // Scroll wheel — accumulated since last update(), reset each frame
+    // ---- Scroll wheel -------------------------------------------------------
+
+    /**
+     * @brief Returns the scroll delta accumulated since the last update().
+     *
+     * Positive = scroll up, negative = scroll down. Reset to 0 each frame.
+     */
     static float getScrollDelta();
 
 private:
